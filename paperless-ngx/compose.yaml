@@ -1,0 +1,58 @@
+services:
+  paperless-ngx:
+    volumes:
+      - ./paperless-ngx/data:/usr/src/paperless/data
+      - ./paperless-ngx/media:/usr/src/paperless/media
+      - ./paperless-ngx/consume:/usr/src/paperless/consume
+      - ./paperless-ngx/export:/usr/src/paperless/export
+    container_name: paperless-ngx
+    depends_on:
+      - paperless_redis
+      - paperless_db
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    environment:
+      PAPERLESS_DBHOST: paperless_db
+      PAPERLESS_OCR_LANGUAGE: deu
+      PAPERLESS_DBPASS: s3cur3P4ssw0rd
+      PAPERLESS_CONSUMER_ENABLE_BARCODES: "true"
+      PAPERLESS_CONSUMER_BARCODE_SCANNER: ZXING
+      PAPERLESS_CONSUMER_BARCODE_STRING: PATCHT
+      PAPERLESS_REDIS: redis://default:s3cur3P4ssw0rd@paperless_redis
+      PAPERLESS_SECRET_KEY: uoZoCbzzP+aS0nQaM446JXvxwjXclCLQdkIwrGKC3Hs=
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+      PAPERLESS_OCR_LANGUAGES: deu
+      HOST_HOSTNAME: paperless-ngx
+      PAPERLESS_FILENAME_FORMAT: "{{ created_year }}/{{ created_month }}/{{ added_year
+        }}{{ added_month }}{{ added_day }}-{{ title }}"
+    ports:
+      - 8000:8000
+  paperless_redis:
+    volumes:
+      - ./paperless_redis:/bitnami/redis
+    container_name: paperless_redis
+    image: bitnamisecure/redis:latest
+    restart: unless-stopped
+    environment:
+      REDIS_EXTRA_FLAGS: --auto-aof-rewrite-percentage 100 --auto-aof-rewrite-min-size 64mb
+      TZ: Europe/Berlin
+      HOST_HOSTNAME: paperless_redis
+      REDIS_DBINDEX: "0"
+      ALLOW_EMPTY_PASSWORD: no
+      REDIS_PASSWORD: s3cur3P4ssw0rd
+    ports:
+      - 6379:6379
+  paperless_db:
+    volumes:
+      - ./paperless_db:/var/lib/postgresql
+    container_name: paperless_db
+    image: docker.io/library/postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: s3cur3P4ssw0rd
+      TZ: Europe/Berlin
+      HOST_HOSTNAME: paperless_db
+    ports:
+      - 5432:5432
