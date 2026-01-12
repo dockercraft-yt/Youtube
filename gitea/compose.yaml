@@ -14,7 +14,7 @@ services:
       - GITEA__database__USER=gitea
       - GITEA__database__PASSWD=${POSTGRES_PW:-gitea}
     ports:
-      - 27040:3000
+      - 3000:3000
       - 2222:2222
     depends_on:
       - db
