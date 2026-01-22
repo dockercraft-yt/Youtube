@@ -1,0 +1,63 @@
+services:
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    container_name: npm
+    ports:
+      - 80:80
+      - 443:443
+      - 81:81
+    environment:
+      TZ: Europe/Berlin
+      DB_POSTGRES_HOST: npm_db
+      DB_POSTGRES_PORT: 5432
+      DB_POSTGRES_USER: npm
+      DB_POSTGRES_PASSWORD: ${DB_PASSWORD:-npmpass}
+      DB_POSTGRES_NAME: npm
+    volumes:
+      - ./npm/data:/data
+      - ./npm/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - npm_db
+    networks:
+      - npm_default
+      - proxy-net
+  npm_db:
+    image: postgres:17
+    container_name: npm_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: npm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-npmpass}
+      POSTGRES_DB: npm
+    volumes:
+      - ./data:/var/lib/postgresql
+    networks:
+      - npm_default
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - 53:53/udp
+      - 53:53/tcp
+      - 8081:80
+      - 8444:443
+    environment:
+      TZ: Europe/Berlin
+      FTLCONF_webserver_api_password: ${PIHOLE_PASSWORD:-PaSSW0rd}
+      FTLCONF_dns_listeningMode: ALL
+    volumes:
+      - ./pihole/etc-pihole:/etc/pihole
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+    restart: unless-stopped
+    networks:
+      - npm_default
+      - proxy-net
+networks:
+  npm_default:
+    external: true
+  proxy-net:
+    external: true
