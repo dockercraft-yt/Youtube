@@ -1,0 +1,113 @@
+services:
+  authentik:
+    volumes:
+      - ./authentik/templates:/templates:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./authentik/media:/media:rw
+    container_name: authentik
+    command: server
+    image: authentik/server:2025.12.1
+    cpuset: ""
+    labels: {}
+    devices: []
+    #networks:
+    #- proxy-net
+    #- authentik_default
+    restart: unless-stopped
+    environment:
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "true"
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY} #openssl rand -base64 32
+      AUTHENTIK_POSTGRESQL__HOST: authentik_db
+      HOST_HOSTNAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-authentik}
+      TZ: Europe/Berlin
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      HOST_CONTAINERNAME: authentik
+    ports:
+      - 9000:9000
+      - 9443:9443
+    depends_on:
+      - authentik_db
+  authentik_db:
+    privileged: false
+    volumes:
+      - ./authentik_db:/var/lib/postgresql/data:rw
+    container_name: authentik_db
+    command: ""
+    image: postgres:16
+    cpuset: ""
+    labels: {}
+    devices: []
+    #networks:
+    #- authentik_default
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      TZ: Europe/Berlin
+      POSTGRES_USER: ${POSTGRES_USER:-authentik}
+      HOST_CONTAINERNAME: authentik_db
+      HOST_HOSTNAME: authentik_db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-authentik}
+  authentik-worker:
+    privileged: false
+    volumes:
+      - ./authentik/backups:/backups:rw
+      - ./authentik/media/:/media:rw
+      - ./authentik/certs:/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ./authentik/templates/:/templates:rw
+    container_name: authentik-worker
+    command: worker
+    image: authentik/server:2025.12.1
+    cpuset: ""
+    labels: {}
+    devices: []
+    #networks:
+    #- authentik_default
+    restart: unless-stopped
+    environment:
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "true"
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY} #openssl rand -base64 32
+      AUTHENTIK_POSTGRESQL__HOST: authentik_db
+      TMPDIR: /tmp
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-authentik}
+      TZ: Europe/Berlin
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      HOST_HOSTNAME: authentik-worker
+      HOST_CONTAINERNAME: authentik-worker
+    depends_on:
+      - authentik_db
+      - authentik
+    ports: []
+  authentik-Proxy:
+    privileged: false
+    volumes: []
+    container_name: authentik-Proxy
+    command: ""
+    image: ghcr.io/goauthentik/proxy:2025.12.1
+    cpuset: ""
+    labels: {}
+    devices: []
+    #networks:
+    #  - authentik_default
+    #  - proxy-net
+    restart: unless-stopped
+    environment:
+      AUTHENTIK_TOKEN: 1JyvUdFPC4bTKOktRGsMudO1hBfDwYZ0d06It4Eca9vpGv7uMKbbWrunASlE
+      AUTHENTIK_INSECURE: "true"
+      HOST_HOSTNAME: authentik-Proxy
+      HOST_CONTAINERNAME: authentik-Proxy
+      AUTHENTIK_HOST: https://sso.homelab.dockercraft.xyz/
+      TZ: Europe/Berlin
+    ports:
+      - 9001:9000
+      - 9444:9443
+    depends_on:
+      - authentik
+#networks:
+#  authentik_default:
+#    external: true
+#  proxy-net:
+#    external: true
